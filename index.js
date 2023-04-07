@@ -1,35 +1,22 @@
 const express = require("express")
+const cors = require("cors")
 const morgan = require("morgan")
 const app = express()
-
-// implement our own middleware (function that can handle request & response obj)
-const requestLogger = (request, response, next) => {
-  console.log("Method: ", request.method)
-  console.log("Path: ", request.path)
-  console.log("Body: ", request.body)
-  console.log("---")
-  next()
-}
-// next function calls the next middleware
-
-const unknownEndpoint = (request, response) => {
-  response.status(404).send({ error: "Unknown endpoint" })
-}
 
 morgan.token("content", function (req, res) {
   return JSON.stringify(req.body)
 })
 const morganLogger = morgan(
-  ":method :url :status :res[content-length] - :response-time ms :content",
-  {
-    skip: function (req, res) {
-      return req.method !== "POST"
-    }
-  }
+  ":method :url :status :res[content-length] - :response-time ms :content"
+  // {
+  //   skip: function (req, res) {
+  //     return req.method !== "POST" || req.method !== "PUT"
+  //   }
+  // }
 )
 
 app.use(express.json())
-// app.use(requestLogger) // use our custom middleware, use statements in order of what gets used first
+app.use(cors())
 app.use(morganLogger)
 
 let persons = [
@@ -125,7 +112,25 @@ app.post("/api/persons", (request, response) => {
   response.json(person)
 })
 
-app.use(unknownEndpoint)
+app.put("/api/persons/:id", (request, response) => {
+  const id = Number(request.params.id)
+  const body = request.body
+
+  if (!body.name || !body.number) {
+    return response.status(400).json({
+      error: "bad request"
+    })
+  }
+
+  const updatedPerson = {
+    id: id,
+    name: body.name,
+    number: body.number
+  }
+
+  persons = persons.map(p => (p.id !== id ? p : updatedPerson))
+  response.json(updatedPerson)
+})
 
 // methods
 const generateId = () => {
